@@ -3,6 +3,7 @@ import pyrender
 from trimesh.creation import box, cylinder
 import numpy as np
 
+
 class TwoDOF:
     def __init__(self) -> None:
         self.robot = URDF.load('data/two_planar/2dof_planar.urdf')
@@ -14,14 +15,13 @@ class TwoDOF:
         if len(self.robot.actuated_joints) != len(q):
             raise Exception("Wrong dimensions of q")
 
-        cfg = {}    
+        cfg = {}
         for i in range(len(q)):
             cfg[self.robot.actuated_joints[i].name] = q[i]
 
         return cfg
 
     def get_link_mesh(self, tm):
-        print(tm.visuals[0].material.color)
         init_pose = tm.visuals[0].origin
         if tm.visuals[0].geometry.cylinder is not None:
             length = tm.visuals[0].geometry.cylinder.length
@@ -35,11 +35,9 @@ class TwoDOF:
             mesh.visual.face_colors = tm.visuals[0].material.color
             return init_pose, mesh
 
-
-
     def show(self, q=None, obstacles=None, use_collision=False):
         cfg = self.get_config(q)
-        #print(cfg)
+        # print(cfg)
         if use_collision:
             fk = self.robot.collision_trimesh_fk(cfg=cfg)
         else:
@@ -57,7 +55,7 @@ class TwoDOF:
         table = box([0.5, 0.5, -0.4])
         table.apply_translation([0, 0, -0.015])
 
-        #scene.add(pyrender.Mesh.from_trimesh(table))
+        # scene.add(pyrender.Mesh.from_trimesh(table))
 
         # adding obstacles to the scene
         for ob in obstacles:
