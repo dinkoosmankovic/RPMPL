@@ -15,6 +15,7 @@ def get_config(robot, q):
 
 def show(robot, q=None, obstacles=None, use_collision=False):
     cfg = get_config(robot, q)
+    print(cfg)
     if use_collision:
         fk = robot.collision_trimesh_fk(cfg=cfg)
     else:
