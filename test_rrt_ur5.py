@@ -22,19 +22,19 @@ def update_obstacles(obstacles):
 
 
 start = np.array([pi/4, -pi/3, 2.0, 0, 0, 0])
-goal = np.array([-pi/4, -pi/3, 2.0, 0, 0, 0])
-obstacles = [box([0.1, 0.1, 0.3]), box([0.1, 0.1, 0.1])]
-obstacles[0].apply_translation([0.3, 0, 0.15])
-obstacles[1].apply_translation([-0.5, 0, 0.1])
+goal = np.array([-pi/2, -pi/3, 2.0, 0, 0, 0])
+obstacles = [box([0.1, 0.1, 0.5]), box([0.1, 0.1, 0.1])]
+obstacles[0].apply_translation([0.3, 0, 0.25])
+obstacles[1].apply_translation([0.3, 0, 0.8])
 robot = UR5(obstacles)
 
 x = threading.Thread(target=update_obstacles, args=(obstacles,))
 # robot.show(q=start, obstacles=obstacles)
 
 args = {
-    "max_iter": 2000,
+    "max_iter": 500,
     "eps": pi/10.0,
-    "gamma": 0.01,
+    "gamma": 0.2,
     "state_space": robot.spaces,
     "robot": robot,
     "num_checks": 10

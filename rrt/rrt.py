@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from scipy.spatial import Delaunay
 
+import logging
+format = "%(asctime)s: %(message)s"
+logging.basicConfig(format=format, level=logging.INFO,
+                    datefmt="%H:%M:%S")
 
 class RRT:
     def __init__(self, start, goal, args=None) -> None:
@@ -30,6 +34,8 @@ class RRT:
 
     def solve(self) -> bool:
         for i in range(self.max_iter):
+            if (i % 100 == 0):
+                logging.info("Iteration: %d", i)
             q_rand = None
             if random.random() < self.gamma:
                 q_rand = self.goal
@@ -45,7 +51,7 @@ class RRT:
                 q_new_parent = self.get_parent_node(Node(q_near[0].data))
                 q_new_node = Node(q_new, q_new_parent)
                 self.nodes.append(q_new_node)
-                if self.state_space.equal(q_new, self.goal, self.eps):
+                if self.state_space.equal(q_new, self.goal, self.eps/2):
                     return True
         return False
 

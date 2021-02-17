@@ -1,6 +1,6 @@
 from urdfpy import URDF
 import pyrender
-from trimesh.creation import box
+from trimesh.creation import box, cylinder
 from state_spaces.real_vector_space import RealVectorSpace
 from trimesh.creation import box, cylinder
 from trimesh.collision import CollisionManager
@@ -26,6 +26,9 @@ class UR5(RealVectorSpace):
             self.init_poses.append(pose)
             self.robot_cm.add_object(name, tm, pose)
         
+        table = cylinder(radius=0.7, height=0.02)
+        table.apply_translation([0, 0, -0.055])
+        obstacles.append(table)
         for i, ob in enumerate(obstacles):
             self.env_cm.add_object("obstacle_" + str(i), ob)
 
@@ -100,15 +103,18 @@ class UR5(RealVectorSpace):
             scene.add(mesh, pose=pose)
 
         # adding base box to the scene
-        table = box([0.5, 0.5, 0.02])
+        table = cylinder(radius=0.7, height=0.02) #([0.5, 0.5, 0.02])
         table.apply_translation([0, 0, -0.015])
         table.visual.vertex_colors = [205, 243, 8, 255]
 
         scene.add(pyrender.Mesh.from_trimesh(table))
 
         # adding obstacles to the scene
-        for ob in obstacles:
-            ob.visual.vertex_colors = [255, 0, 0, 255]
+        for i, ob in enumerate(obstacles):
+            if i < len(obstacles)-1:
+                ob.visual.vertex_colors = [255, 0, 0, 255]
+            else:
+                ob.visual.vertex_colors = [205, 243, 8, 255]
             scene.add(pyrender.Mesh.from_trimesh(ob, smooth=False))
 
         pyrender.Viewer(scene, use_raymond_lighting=True)
@@ -131,17 +137,22 @@ class UR5(RealVectorSpace):
             node_map[tm] = node
 
         # adding base box to the scene
-        table = box([0.5, 0.5, 0.02])
+        table = cylinder(radius=0.7, height=0.02) #([0.5, 0.5, 0.02])
         table.apply_translation([0, 0, -0.015])
         table.visual.vertex_colors = [205, 243, 8, 255]
+        scene.add(pyrender.Mesh.from_trimesh(table))
 
         cam = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=1.414)
         init_cam_pose = np.eye(4)
         init_cam_pose[2, 3] = 2.5
         scene.add(cam, pose=init_cam_pose)
 
-        for ob in obstacles:
-            ob.visual.vertex_colors = [255, 0, 0, 255]
+        # adding obstacles to the scene
+        for i, ob in enumerate(obstacles):
+            if i < len(obstacles)-1:
+                ob.visual.vertex_colors = [255, 0, 0, 255]
+            else:
+                ob.visual.vertex_colors = [205, 243, 8, 255]
             scene.add(pyrender.Mesh.from_trimesh(ob, smooth=False))
 
         # Pop the visualizer asynchronously
