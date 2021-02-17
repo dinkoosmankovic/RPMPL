@@ -32,7 +32,7 @@ x = threading.Thread(target=update_obstacles, args=(obstacles,))
 # robot.show(q=start, obstacles=obstacles)
 
 args = {
-    "max_iter": 500,
+    "max_iter": 1500,
     "eps": pi/10.0,
     "gamma": 0.2,
     "state_space": robot.spaces,

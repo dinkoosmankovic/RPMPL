@@ -27,7 +27,7 @@ class UR5(RealVectorSpace):
             self.robot_cm.add_object(name, tm, pose)
         
         table = cylinder(radius=0.7, height=0.02)
-        table.apply_translation([0, 0, -0.055])
+        table.apply_translation([0, 0, -0.015])
         obstacles.append(table)
         for i, ob in enumerate(obstacles):
             self.env_cm.add_object("obstacle_" + str(i), ob)
@@ -137,10 +137,10 @@ class UR5(RealVectorSpace):
             node_map[tm] = node
 
         # adding base box to the scene
-        table = cylinder(radius=0.7, height=0.02) #([0.5, 0.5, 0.02])
-        table.apply_translation([0, 0, -0.015])
-        table.visual.vertex_colors = [205, 243, 8, 255]
-        scene.add(pyrender.Mesh.from_trimesh(table))
+        #table = cylinder(radius=0.7, height=0.02) #([0.5, 0.5, 0.02])
+        #table.apply_translation([0, 0, -0.015])
+        #table.visual.vertex_colors = [205, 243, 8, 255]
+        #scene.add(pyrender.Mesh.from_trimesh(table))
 
         cam = pyrender.PerspectiveCamera(yfov=np.pi / 3.0, aspectRatio=1.414)
         init_cam_pose = np.eye(4)
