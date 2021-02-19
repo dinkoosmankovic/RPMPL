@@ -4,7 +4,7 @@ from state_spaces.real_vector_space import RealVectorSpace
 from trimesh.creation import box, cylinder
 from trimesh.collision import CollisionManager
 import numpy as np
-
+import threading
 
 class TwoDOF(RealVectorSpace):
     def __init__(self, obstacles) -> None:
@@ -12,6 +12,12 @@ class TwoDOF(RealVectorSpace):
         self.spaces = RealVectorSpace(2)
         self.robot_cm = CollisionManager()
         self.env_cm = CollisionManager()
+        self.start_config = [0, 0]
+
+        self.traj = []
+        self.count_i = 0
+        self.curr_q = [0, 0]
+
         cfg = self.get_config([0, 0])
         fk = self.robot.link_fk(cfg=cfg)
         self.init_poses = []
@@ -24,6 +30,25 @@ class TwoDOF(RealVectorSpace):
 
         for i, ob in enumerate(obstacles):
             self.env_cm.add_object("obstacle_" + str(i), ob)
+
+    def set_trajectory(self, path):
+        self.traj = path
+        self.curr_q = path[0]
+        self.count_i = 0
+
+    def get_next_q(self):
+        self.count_i += 1
+        if self.count_i >= len(self.traj):
+            return None
+
+        self.curr_q = self.traj[self.count_i]
+        return self.curr_q
+
+    def update_env(self, obstacles):
+        with threading.Lock():
+            for i, ob in enumerate(obstacles):
+                self.env_cm.remove_object("obstacle_" + str(i))
+                self.env_cm.add_object("obstacle_" + str(i), ob)
 
     def spaces(self):
         return self.spaces
