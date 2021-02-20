@@ -11,6 +11,7 @@ format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.INFO,
                     datefmt="%H:%M:%S")
 
+
 class RRT:
     def __init__(self, start, goal, args=None) -> None:
         self.eps = args["eps"]
@@ -25,6 +26,12 @@ class RRT:
         self.num_checks = args["num_checks"]
         if not(self.robot.is_valid(q=start) and self.robot.is_valid(q=goal)):
             raise Exception("Robot is in collision in start or goal position!")
+
+        self.path = []
+
+    def clear(self):
+        self.tree = kdtree.create([self.start])
+        self.nodes = [Node(self.start)]
 
     def __str__(self) -> str:
         return "Tree size: " + str(len(self.nodes))
@@ -46,10 +53,11 @@ class RRT:
             q_new = self.state_space.get_qnew(q_near[0].data, q_rand, self.eps)
             # print("qnear: ", q_near[0].data)
             # print("qnew: ", q_new)
-            if (self.robot.is_valid(q_near[0].data, q_new, self.num_checks)):
+            if self.robot.is_valid(q_near[0].data, q_new, self.num_checks):
                 self.tree.add(q_new)
                 q_new_parent = self.get_parent_node(Node(q_near[0].data))
                 q_new_node = Node(q_new, q_new_parent)
+                q_new_parent.children.append(q_new_node)
                 self.nodes.append(q_new_node)
                 if self.state_space.equal(q_new, self.goal, self.eps):
                     return True
@@ -63,6 +71,7 @@ class RRT:
         while(current_node is not None):
             path.append(current_node.position)
             current_node = current_node.parent
+        self.path = path
         return path
 
     def get_obstacles(self) -> tuple:

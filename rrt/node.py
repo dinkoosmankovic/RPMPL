@@ -4,6 +4,7 @@ class Node:
     def __init__(self, position, parent=None) -> None:
         self.positon = position
         self.parent = parent
+        self.children = []
 
     def __str__(self) -> str:
         if self.parent is not None:

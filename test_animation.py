@@ -66,7 +66,7 @@ logging.basicConfig(format=_format, level=logging.INFO,
 start = np.array([-pi/4, pi/4])
 goal = np.array([pi/4, -pi/4])
 obstacles = [box([0.3, 0.6, 0.3]), box([0.3, 0.3, 0.3])]
-obstacles[0].apply_translation([1.3, 0, 0])
+obstacles[0].apply_translation([1.6, 0, 0])
 obstacles[1].apply_translation([-0.5, 0, 0])
 
 # example: two dof robot so the animation is relatively simple
@@ -108,12 +108,14 @@ while True:
     for event in anim.events:
         # if there was autonomous obstacle movement, do the re-planning
         if event.type == Event.ENV_CHANGE:
-            # update enviroment for collision
+            # update environment for collision
             anim.robot.update_env(obstacles)
             start = anim.robot.curr_q
+            planner.start = start
+            planner.clear()
 
             if np.linalg.norm(goal - start) > eps:
-                planner = RRT(start, goal, args)
+                # planner = RRT(start, goal, args)
                 res = planner.solve()
                 if res:
                     path = planner.get_solution_path()
