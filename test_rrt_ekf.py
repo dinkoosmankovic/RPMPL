@@ -12,6 +12,9 @@ import logging
 import time
 import numpy as np
 
+from filterpy.kalman import KalmanFilter
+from scipy.linalg import block_diag
+from filterpy.common import Q_discrete_white_noise
 
 def move_obstacles(obstacles_l, anim):
     # loop through pre-defined movement (right-left)
@@ -27,7 +30,7 @@ def move_obstacles(obstacles_l, anim):
     s = move_obstacles.sign
     # move obstacles at constant speed relative to FPS
     with threading.Lock():
-        obstacles_l[0].apply_translation([0.01 * s, 0.005 * s, 0])
+        obstacles_l[0].apply_translation([0.005 * s, 0.005 * s, 0])
         if move_obstacles.i % 2 == 0:
             ev = Event(Event.ENV_CHANGE)
             anim.events.append(ev)
@@ -36,7 +39,7 @@ def move_obstacles(obstacles_l, anim):
 def move_thread(obstacles_l, anim):
     while True:
         move_obstacles(obstacles_l, anim)
-        time.sleep(0.2)
+        time.sleep(0.1)
 
 
 def single_move_obstacle(obstacles_l, direction):
@@ -60,18 +63,59 @@ def fix_path(path, max_q=1.0):
     new_path.append(path[-1])
     return new_path
 
+
+def get_3D_tracker(difft):
+    R_std = 0.1
+    Q_std = 0.05
+
+    tracker = KalmanFilter(dim_x=6, dim_z=3)
+    dt = difft
+
+    tracker.F = np.array([[1, dt, 0, 0, 0, 0],
+                         [0, 1, 0, 0, 0, 0],
+                         [0, 0, 1, dt, 0, 0],
+                         [0, 0, 0, 0, 1, 0],
+                         [0, 0, 0, 0, 1, dt],
+                         [0, 0, 0, 0, 0, 1]])
+    tracker.u = 0.
+    tracker.H = np.array([[1., 0, 0, 0, 0, 0],
+                         [0, 0, 1., 0, 0, 0],
+                         [0, 0, 0, 0, 1., 0]])
+    tracker.R = np.eye(3) * R_std**2
+    q = Q_discrete_white_noise(dim=3, dt=dt, var=Q_std**2)
+    tracker.Q = block_diag(q, q)
+    tracker.x = np.array([[0, 0, 0, 0, 0, 0]]).T
+    tracker.P = np.eye(6) * 500.
+    tracker.B = 0.
+    return tracker
+
+
+def get_predictions_box(dim, trackers):
+    global obstacles
+    pred_box = []
+
+    for i, tr in enumerate(trackers):
+        tr.update(obstacles[i].center_mass)
+        pr, _ = tr.get_prediction()
+        pred_box.append(box(dim[i]))
+        pred_box[i].apply_translation([pr[0][0], pr[2][0], pr[4][0]])
+    return pred_box
+
 _format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=_format, level=logging.INFO,
                     datefmt="%H:%M:%S")
 
 start = np.array([-pi/4, pi/4])
 goal = np.array([pi/4, -pi/4])
+dim_box = np.array([[0.3, 0.6, 0.3], [0.3, 0.3, 0.3]])
+
 obstacles = [box([0.3, 0.6, 0.3]), box([0.3, 0.3, 0.3])]
 obstacles[0].apply_translation([1.6, 0, 0])
 obstacles[1].apply_translation([-0.5, 0, 0])
 
 # example: two dof robot so the animation is relatively simple
 robot = TwoDOF(obstacles)
+robot.update_predictions(obstacles)
 robot.start_config = start
 eps = pi/10.0
 args = {
@@ -83,10 +127,14 @@ args = {
     "num_checks": 10
 }
 
-# specify Animation
-# - collect robot information
-# - collect obstacles information
-# - create scene inside Animation rather than inside of robot
+ms = 50
+
+trackers = [get_3D_tracker(5*ms/1000) for i in range(0, len(obstacles))]
+for i in range(0, len(obstacles)):
+    c = obstacles[i].center_mass
+    x = c.T
+    trackers[i].predict()
+    trackers[i].update(x)
 
 anim = Animation(robot, obstacles)
 t = LocalTime()
@@ -104,13 +152,21 @@ with threading.Lock():
         path = fix_path(path, max_q=0.05)
         anim.robot.set_trajectory(path)
 
+
 while True:
     # pick up events
+    predictions = get_predictions_box(dim=dim_box, trackers=trackers)
+
+    # for i, ob in enumerate(obstacles):
+    #     print("obstacle i: ", i , " at: ", ob.center_mass,
+    #           " prediction at: ", predictions[i].center_mass)
+
     for event in anim.events:
         # if there was autonomous obstacle movement, do the re-planning
         if event.type == Event.ENV_CHANGE:
             # update environment for collision
             anim.robot.update_env(obstacles)
+            anim.robot.update_predictions(predictions)
             start = anim.robot.curr_q
 
             if np.linalg.norm(goal - start) > eps:
@@ -125,7 +181,7 @@ while True:
                         path = fix_path(path, max_q=0.05)
                         anim.robot.set_trajectory(path)
 
-        # if there was pressed key, move the obstacle manually
+        # if there was pressed key, move the obstacle man>ally
         # *NOTE* STILL NOT IMPLEMENTED
         elif event.type == Event.KEY_PRESSED:
             if event.key == Key.UP:
@@ -151,4 +207,4 @@ while True:
 
     # time advance - miliseconds
     # time.sleep(0.5)
-    t.tick(50)
+    t.tick(ms)

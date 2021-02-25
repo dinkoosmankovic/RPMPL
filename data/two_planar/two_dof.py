@@ -30,6 +30,7 @@ class TwoDOF(RealVectorSpace):
 
         for i, ob in enumerate(obstacles):
             self.env_cm.add_object("obstacle_" + str(i), ob)
+            self.env_cm.add_object("prediction_" + str(i), ob)
 
     def set_trajectory(self, path):
         self.traj = path
@@ -49,6 +50,12 @@ class TwoDOF(RealVectorSpace):
             for i, ob in enumerate(obstacles):
                 self.env_cm.remove_object("obstacle_" + str(i))
                 self.env_cm.add_object("obstacle_" + str(i), ob)
+
+    def update_predictions(self, predictions):
+        with threading.Lock():
+            for i, ob in enumerate(predictions):
+                self.env_cm.remove_object("prediction_" + str(i))
+                self.env_cm.add_object("prediction_" + str(i), ob)
 
     def spaces(self):
         return self.spaces

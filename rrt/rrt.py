@@ -54,7 +54,6 @@ class RRT:
             # print("qnear: ", q_near[0].data)
             # print("qnew: ", q_new)
             if self.robot.is_valid(q_near[0].data, q_new, self.num_checks):
-                print(i)
                 self.tree.add(q_new)
                 q_new_parent = self.get_parent_node(Node(q_near[0].data))
                 q_new_node = Node(q_new, q_new_parent)

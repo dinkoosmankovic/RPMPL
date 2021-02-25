@@ -15,14 +15,14 @@ class RRTRewire(RRT):
             if not self.robot.is_valid(q):
                 self.clear()
                 return self.resolve()
-        logging.info("Using last tree")
+        # logging.info("Using last tree")
         return False
 
     def resolve_with_check(self, start) -> bool:
         for q in self.path:
             if not self.robot.is_valid(q):
                 return self.resolve(start)
-        logging.info("using last tree")
+        # logging.info("using last tree")
         return False
 
     def reverse_parent(self, q_start, q_old_parent):
