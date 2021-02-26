@@ -155,4 +155,6 @@ class RRT:
         ax.grid(True)
         ax.set_xlim(self.state_space.range)
         ax.set_ylim(self.state_space.range)
+        plt.ion()
         plt.show()
+        plt.pause(0.001)

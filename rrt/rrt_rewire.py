@@ -40,10 +40,14 @@ class RRTRewire(RRT):
             q = q_temp
 
     def dfs(self, q_start):
+        if q_start.parent is None:
+            print("hanging node")
         q_start.visited = True
         if len(q_start.children) == 0:
             return
         for q in q_start.children:
+            if q.parent is None:
+                q.parent = q_start
             self.dfs(q)
 
     def resolve(self, start) -> bool:
@@ -80,6 +84,7 @@ class RRTRewire(RRT):
             q_old_parent = q_near_node.parent
             q_near_node.parent = None
             q_start = q_near_node
+            self.start = q_start.position
 
 
         # rotate rest of the tree to point from new start node
@@ -91,11 +96,22 @@ class RRTRewire(RRT):
         i = 0
         del self.tree
         self.tree = kdtree.create([self.start])
+        print("before: ", len(self.nodes))
         for q in self.nodes[:]:
             if not q.visited:
                 self.nodes.remove(q)
             else:
                 self.tree.add(q.position)
                 q.visited = False
+        print("after: ", len(self.nodes))
         return self.solve()
 
+    # def get_root_node(self, q):
+    #     if q.parent is None:
+    #         return q
+    #     return self.get_root_node(q.parent)
+    #
+    #
+    # def resolve_with_rewire(self):
+    #     # go through all nodes, try to connect broken paths
+    #     # if not possible, keep only starting tree, and do replanning

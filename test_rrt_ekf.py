@@ -129,7 +129,7 @@ args = {
 
 ms = 50
 
-trackers = [get_3D_tracker(5*ms/1000) for i in range(0, len(obstacles))]
+trackers = [get_3D_tracker(10*ms/1000) for i in range(0, len(obstacles))]
 for i in range(0, len(obstacles)):
     c = obstacles[i].center_mass
     x = c.T
@@ -152,10 +152,14 @@ with threading.Lock():
         path = fix_path(path, max_q=0.05)
         anim.robot.set_trajectory(path)
 
-
+i = 0
 while True:
     # pick up events
     predictions = get_predictions_box(dim=dim_box, trackers=trackers)
+    i += 1
+    # if i % 100 == 0:
+    #     print("visualize")
+    #     planner.visualize()
 
     # for i, ob in enumerate(obstacles):
     #     print("obstacle i: ", i , " at: ", ob.center_mass,
