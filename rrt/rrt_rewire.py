@@ -196,6 +196,9 @@ class RRTRewire(RRT):
                 q_curr = q_curr.parent
                 q_temp.parent = None
 
+            if not valid_curr and not valid_parent:
+                q_curr = q_curr.parent
+
         # save goal node so we don't have to update get_solution_path() method
         q_goal = self.nodes[-1]
         self.nodes.pop()
