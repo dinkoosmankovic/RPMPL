@@ -18,6 +18,12 @@ class RRTRewire(RRT):
         # logging.info("Using last tree")
         return False
 
+    def resolve_rewire(self, start) -> bool:
+        for q in self.path:
+            if not self.robot.is_valid(q):
+                return self.resolve_with_rewire(start)
+        return False
+
     def resolve_with_check(self, start) -> bool:
         for q in self.path:
             if not self.robot.is_valid(q):
@@ -106,12 +112,105 @@ class RRTRewire(RRT):
         print("after: ", len(self.nodes))
         return self.solve()
 
-    # def get_root_node(self, q):
-    #     if q.parent is None:
-    #         return q
-    #     return self.get_root_node(q.parent)
-    #
-    #
-    # def resolve_with_rewire(self):
-    #     # go through all nodes, try to connect broken paths
-    #     # if not possible, keep only starting tree, and do replanning
+    def update_path(self):
+        if len(self.path) < 2 or self.robot.curr_q is None:
+            return
+
+        if np.linalg.norm(self.robot.curr_q-self.path[1]) < 1e-05:
+            self.path = self.path[1:]
+
+    def get_root_node(self, q):
+        if q.parent is None:
+            return q
+        return self.get_root_node(q.parent)
+
+    def dfs_quick(self, q, tree):
+        if len(q.children) == 0:
+            tree.append(q)
+            return
+        for qq in q.children:
+            self.dfs_quick(qq, tree)
+
+    def closest(self, q, tree):
+        dist = float('inf')
+        q_ret = []
+        for qq in tree:
+            if np.linalg.norm(q.position - qq.position) < dist:
+                q_ret = qq
+                dist = np.linalg.norm(q.position-qq.position)
+        return q_ret
+
+    def connect(self, q_from, q_to):
+        from_tree = []
+        self.dfs_quick(self.get_root_node(q_from), from_tree)
+
+        to_tree = []
+        self.dfs_quick(self.get_root_node(q_to), to_tree)
+
+        q_1 = self.closest(q_from, to_tree)
+        q_2 = self.closest(q_to, from_tree)
+
+        if self.robot.is_valid(q_from.position, q_1.position, self.num_checks):
+            q_from.children.append(q_1)
+            q_1.parent = q_from
+            return True
+        if self.robot.is_valid(q_2.position, q_to.position, self.num_checks):
+            q_2.children.append(q_to)
+            q_to.parent = q_2
+            return True
+
+        return False
+
+    def resolve_with_rewire(self, start):
+        # self.visualize()
+        # go through all nodes, try to connect broken paths
+        # if not possible, keep only starting tree, and do replanning
+
+        q_goal_node = self.nodes[-1]
+        q_curr = q_goal_node
+        check = False
+        nodes_to_connect = []
+        q_next = q_curr.parent
+
+        while q_curr is not None:
+            if q_curr.parent is None:
+                break
+            valid_curr = self.robot.is_valid(q_curr.position)
+            valid_parent = self.robot.is_valid(q_curr.parent.position)
+
+            if valid_curr and valid_parent:
+                q_curr = q_curr.parent
+                continue
+
+            if valid_curr and not valid_parent:
+                nodes_to_connect.append(q_curr)
+                q_curr.parent.children.remove(q_curr)
+                q_temp = q_curr
+                q_curr = q_curr.parent
+                q_temp.parent = None
+
+            if not valid_curr and valid_parent:
+                nodes_to_connect.append(q_curr)
+                q_curr.parent.children.remove(q_curr)
+                q_temp = q_curr
+                q_curr = q_curr.parent
+                q_temp.parent = None
+
+        # save goal node so we don't have to update get_solution_path() method
+        q_goal = self.nodes[-1]
+        self.nodes.pop()
+
+        res = True
+        for i in range(1, len(nodes_to_connect)):
+            ress = self.connect(nodes_to_connect[i], nodes_to_connect[i-1])
+            # if ress:
+            #     print(i, "connected")
+            # else:
+            #     print(i, "not connected")
+            res = (ress and res)
+
+        self.nodes.append(q_goal)
+        if res:
+            return True
+
+        return self.resolve(start)

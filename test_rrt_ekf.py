@@ -30,7 +30,7 @@ def move_obstacles(obstacles_l, anim):
     s = move_obstacles.sign
     # move obstacles at constant speed relative to FPS
     with threading.Lock():
-        obstacles_l[0].apply_translation([0.005 * s, 0.005 * s, 0])
+        obstacles_l[0].apply_translation([0.005 * s, 0., 0])
         if move_obstacles.i % 2 == 0:
             ev = Event(Event.ENV_CHANGE)
             anim.events.append(ev)
@@ -129,7 +129,7 @@ args = {
 
 ms = 50
 
-trackers = [get_3D_tracker(10*ms/1000) for i in range(0, len(obstacles))]
+trackers = [get_3D_tracker(2*ms/1000) for i in range(0, len(obstacles))]
 for i in range(0, len(obstacles)):
     c = obstacles[i].center_mass
     x = c.T
@@ -157,7 +157,7 @@ while True:
     # pick up events
     predictions = get_predictions_box(dim=dim_box, trackers=trackers)
     i += 1
-    # if i % 100 == 0:
+    # if i % 50 == 0:
     #     print("visualize")
     #     planner.visualize()
 
@@ -176,8 +176,9 @@ while True:
             if np.linalg.norm(goal - start) > eps:
                 # planner = RRT(start, goal, args)
                 with threading.Lock():
-                    res = planner.resolve_with_check(start)
+                    res = planner.resolve_rewire(start)
                     if res:
+                        # planner.visualize()
                         path = planner.get_solution_path()
                         path = path[::-1]
                         path.append(goal)
@@ -208,6 +209,7 @@ while True:
 
     scene_thread.join()
     robot_thread.join()
+    planner.update_path()
 
     # time advance - miliseconds
     # time.sleep(0.5)
