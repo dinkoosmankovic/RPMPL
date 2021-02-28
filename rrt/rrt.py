@@ -68,7 +68,7 @@ class RRT:
         if np.linalg.norm(current_node.position - self.goal) > self.eps:
             return []
         path = []
-        while(current_node is not None):
+        while (current_node is not None):
             path.append(current_node.position)
             current_node = current_node.parent
         self.path = path
