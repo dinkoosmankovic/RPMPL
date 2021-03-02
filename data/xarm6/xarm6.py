@@ -29,7 +29,7 @@ class Xarm6(RealVectorSpace):
         table = cylinder(radius=0.7, height=0.02)
         table.apply_translation([0, 0, -0.015])
         obstacles.append(table)
-        for i, ob in enumerate(obstacles):
+        for i, ob in enumerate(obstacles[:-1]):
             self.env_cm.add_object("obstacle_" + str(i), ob)
 
     def spaces(self):
@@ -48,6 +48,17 @@ class Xarm6(RealVectorSpace):
 
         # print("obs:", self.env_cm._objs["obstacle_0"]["obj"].getTransform())
         return self.robot_cm.in_collision_other(self.env_cm)
+
+    def distance(self, q):
+        cfg = self.get_config(q)
+        fk = self.robot.collision_trimesh_fk(cfg=cfg)
+        # adding robot to the scene
+        for i, tm in enumerate(fk):
+            pose = fk[tm]
+            self.robot_cm.set_transform("link_"+ str(i+1), pose)
+
+        # print("obs:", self.env_cm._objs["obstacle_0"]["obj"].getTransform())
+        return self.robot_cm.min_distance_other(self.env_cm)
 
     def is_valid(self, q, qe=None, num_checks=None):
         if qe is None or num_checks is None:

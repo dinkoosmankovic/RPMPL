@@ -12,6 +12,9 @@ class StateSpace:
     def is_valid(self, q1, q2=None) -> bool:
         pass
 
+    def distance(self, q) -> float:
+        pass
+
     def get_qrand(self):
         pass
 

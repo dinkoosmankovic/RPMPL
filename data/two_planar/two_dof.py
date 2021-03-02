@@ -75,6 +75,18 @@ class TwoDOF(RealVectorSpace):
         # print("obs:", self.env_cm._objs["obstacle_0"]["obj"].getTransform())
         return self.robot_cm.in_collision_other(self.env_cm)
 
+    def distance(self, q):
+        cfg = self.get_config(q)
+        fk = self.robot.link_fk(cfg=cfg)
+        # adding robot to the scene
+        for i, tm in enumerate(fk):
+            pose = fk[tm]
+            init_pose = self.init_poses[i]
+            self.robot_cm.set_transform(tm.name, np.matmul(pose, init_pose))
+
+        # print("obs:", self.env_cm._objs["obstacle_0"]["obj"].getTransform())
+        return self.robot_cm.min_distance_other(self.env_cm)
+
     def is_valid(self, q, qe=None, num_checks=None):
         if qe is None or num_checks is None:
             res = self.is_in_collision(q)
