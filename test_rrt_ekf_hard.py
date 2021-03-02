@@ -57,6 +57,8 @@ def single_move_obstacle(obstacles_l, direction):
 
 
 def fix_path(path, max_q=1.0):
+    if len(path) == 0:
+        return []
     new_path = []
     for i in range(0, len(path)-1):
         new_path.append(path[i])
@@ -81,7 +83,7 @@ def get_3D_tracker(difft):
     tracker.F = np.array([[1, dt, 0, 0, 0, 0],
                          [0, 1, 0, 0, 0, 0],
                          [0, 0, 1, dt, 0, 0],
-                         [0, 0, 0, 0, 1, 0],
+                         [0, 0, 0, 1, 0, 0],
                          [0, 0, 0, 0, 1, dt],
                          [0, 0, 0, 0, 0, 1]])
     tracker.u = 0.
@@ -167,7 +169,6 @@ with threading.Lock():
     if res:
         path = planner.get_solution_path()
         path = path[::-1]
-        path.append(goal)
 
         path = fix_path(path, max_q=0.05)
         anim.robot.set_trajectory(path)
@@ -196,13 +197,12 @@ while True:
             if np.linalg.norm(goal - start) > eps:
                 # planner = RRT(start, goal, args)
                 with threading.Lock():
-                    res = planner.resolve_with_check(start)
+                    # res = planner.resolve_with_check(start)
+                    res = planner.resolve_rewire(start)
                     if res:
                         # planner.visualize()
                         path = planner.get_solution_path()
                         path = path[::-1]
-                        path.append(goal)
-
                         path = fix_path(path, max_q=0.05)
                         anim.robot.set_trajectory(path)
 

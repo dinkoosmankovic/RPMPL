@@ -37,6 +37,14 @@ class TwoDOF(RealVectorSpace):
         self.curr_q = path[0]
         self.count_i = 0
 
+    # def get_next_q(self):
+    #     if len(self.traj) == 0:
+    #         return None
+    #     self.traj.pop()
+    #     self.curr_q = self.traj[-1]
+    #     # print(self.traj)
+    #     return self.curr_q
+
     def get_next_q(self):
         self.count_i += 1
         if self.count_i >= len(self.traj):
