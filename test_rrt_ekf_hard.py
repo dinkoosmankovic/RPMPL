@@ -123,9 +123,10 @@ dim_box = np.array([[d, d, d], [d, d, d],
 obstacles = [box(dim_box[i]) for i in range(0, 4)]
 
 c = 1.0
-for i in range(0, 4):
-    random.seed()
-    theta.append(random.randint(0, 360))
+theta = [0 for i in range(0, 4)]
+# for i in range(0, 4):
+#     random.seed()
+#     theta.append(random.randint(0, 360))
 r = 0.2
 
 for i in range(0, 4):
@@ -174,7 +175,8 @@ with threading.Lock():
         anim.robot.set_trajectory(path)
 
 i = 0
-while True:
+check = True
+while check:
     # pick up events
     predictions = get_predictions_box(dim=dim_box, trackers=trackers)
     i += 1
@@ -197,15 +199,16 @@ while True:
             if np.linalg.norm(goal - start) > eps:
                 # planner = RRT(start, goal, args)
                 with threading.Lock():
-                    # res = planner.resolve_with_check(start)
-                    res = planner.resolve_rewire(start)
+                    res = planner.resolve_with_check(start)
+                    # res = planner.resolve_rewire(start)
                     if res:
                         # planner.visualize()
                         path = planner.get_solution_path()
                         path = path[::-1]
                         path = fix_path(path, max_q=0.05)
                         anim.robot.set_trajectory(path)
-
+            else:
+                check = False
         # if there was pressed key, move the obstacle man>ally
         # *NOTE* STILL NOT IMPLEMENTED
         elif event.type == Event.KEY_PRESSED:
@@ -234,3 +237,4 @@ while True:
     # time advance - miliseconds
     # time.sleep(0.5)
     t.tick(ms)
+logging.info("Done.")

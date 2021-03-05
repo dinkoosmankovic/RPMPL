@@ -5,7 +5,7 @@ from state_spaces.real_vector_space import RealVectorSpace
 from trimesh.creation import box, cylinder
 from trimesh.collision import CollisionManager
 import numpy as np
-
+import threading
 
 class Xarm6(RealVectorSpace):
     def __init__(self, obstacles) -> None:
@@ -13,6 +13,12 @@ class Xarm6(RealVectorSpace):
         self.spaces = RealVectorSpace(6)
         self.robot_cm = CollisionManager()
         self.env_cm = CollisionManager()
+        self.start_config = [0, 0, 0, 0, 0, 0]
+
+        self.traj = []
+        self.count_i = 0
+        self.curr_q = [0, 0, 0, 0, 0, 0]
+
         cfg = self.get_config([0, 0, 0, 0, 0, 0])
         self.init_poses = [0 for i in range(6)]
         #print(cfg)
@@ -25,12 +31,36 @@ class Xarm6(RealVectorSpace):
             name = "link_" + str(i+1) 
             self.init_poses.append(pose)
             self.robot_cm.add_object(name, tm, pose)
-        
-        table = cylinder(radius=0.7, height=0.02)
-        table.apply_translation([0, 0, -0.015])
-        obstacles.append(table)
-        for i, ob in enumerate(obstacles[:-1]):
+
+        for i, ob in enumerate(obstacles):
             self.env_cm.add_object("obstacle_" + str(i), ob)
+        for i, ob in enumerate(obstacles[:-1]):
+            self.env_cm.add_object("prediction_" + str(i), ob)
+
+    def set_trajectory(self, path):
+        self.traj = path
+        self.curr_q = path[0]
+        self.count_i = 0
+
+    def get_next_q(self):
+        self.count_i += 1
+        if self.count_i >= len(self.traj):
+            return None
+
+        self.curr_q = self.traj[self.count_i]
+        return self.curr_q
+
+    def update_env(self, obstacles):
+        with threading.Lock():
+            for i, ob in enumerate(obstacles):
+                self.env_cm.remove_object("obstacle_" + str(i))
+                self.env_cm.add_object("obstacle_" + str(i), ob)
+
+    def update_predictions(self, predictions):
+        with threading.Lock():
+            for i, ob in enumerate(predictions):
+                self.env_cm.remove_object("prediction_" + str(i))
+                self.env_cm.add_object("prediction_" + str(i), ob)
 
     def spaces(self):
         return self.spaces

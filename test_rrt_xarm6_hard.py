@@ -22,20 +22,37 @@ logging.basicConfig(format=format, level=logging.INFO,
                     datefmt="%H:%M:%S")
 
 x = 0.6
-sign = -1
-def move_obstacles(obstacles_l, anim):
-    global x, sign
-    with threading.Lock():
-        if x < 0.3:
-            sign = 1
-        elif x > 0.5:
-            sign = -1
-        x += sign * 0.01
+z = 1.
 
-        dim_box = np.array([[0.1, 0.1, 0.5]])
-        t_obstacles = box(dim_box[0])
-        t_obstacles.apply_translation([x, 0, 0.25])
-        obstacles[0] = t_obstacles
+sign_x = -1
+sign_z = -1
+
+
+def move_obstacles(obstacles_l, anim):
+    global x, z, sign_x, sign_z
+    with threading.Lock():
+        if x < 0.4:
+            sign_x = 1
+        elif x > 0.5:
+            sign_x = -1
+        if z < 0.7:
+            sign_z = 1
+        elif z > 1:
+            sign_z = -1
+        x += sign_x * 0.01
+        z += sign_z * 0.01
+
+        dim_box = [[0.1, 0.1, 0.5], [0.1, 0.1, 0.1],
+                   [0.1, 0.6, 0.6], [0.1, 0.3, 0.1]]
+
+        tobstacles = [box(dim_box[i]) for i in range(0, 4)]
+        tobstacles[0].apply_translation([x, 0, 0.25])
+        tobstacles[1].apply_translation([0.3, 0, z])
+        tobstacles[2].apply_translation([-0.2, 0, 0.3])
+        tobstacles[3].apply_translation([x, 0, 0.5])
+
+        obstacles_l[0:4] = tobstacles[0:4]
+
         ev = Event(Event.ENV_CHANGE)
         anim.events.append(ev)
 
@@ -43,7 +60,7 @@ def move_obstacles(obstacles_l, anim):
 def move_thread(obstacles_l, anim):
     while True:
         move_obstacles(obstacles_l, anim)
-        time.sleep(0.2)
+        time.sleep(0.5)
 
 
 def fix_path(path, max_q=1.0):
@@ -101,12 +118,17 @@ def get_predictions_box(dim, trackers):
     return pred_box
 
 
-start=np.array([-pi/4, pi/2.5, -pi/1.5, pi/2, 0, 0])
-goal=np.array([pi/4, pi/2.5, -pi/1.5, pi/2, 0, 0])
+start = np.array([-pi/4, pi/4, -pi/2, 0, 0, 0])
+goal = np.array([pi/4, pi/4, -pi/2, 0, 0, 0])
 
-dim_box = np.array([[0.1, 0.1, 0.5]])
-obstacles = [box(dim_box[0])]
+dim_box = [[0.1, 0.1, 0.5], [0.1, 0.1, 0.1],
+           [0.1, 0.6, 0.6], [0.1, 0.3, 0.1]]
+
+obstacles = [box(dim_box[i]) for i in range(0, 4)]
 obstacles[0].apply_translation([x, 0, 0.25])
+obstacles[1].apply_translation([0.3, 0, z])
+obstacles[2].apply_translation([-0.2, 0, 0.3])
+obstacles[3].apply_translation([x, 0, 0.5])
 
 table = cylinder(radius=0.7, height=0.02)
 table.apply_translation([0, 0, -0.015])
@@ -119,7 +141,7 @@ robot.start_config = start
 eps = pi/5.0
 args = {
     "max_iter": 5000,
-    "eps": pi/5.0,
+    "eps": eps,
     "gamma": 0.15,
     "state_space": robot.spaces,
     "robot": robot,
@@ -128,12 +150,13 @@ args = {
 
 ms = 100
 
-trackers = [get_3D_tracker(2*ms/1000)]
+trackers = [get_3D_tracker(2*ms/1000) for i in range(0, len(obstacles)-1)]
 
-c = obstacles[0].center_mass
-xx = c.T
-trackers[0].predict()
-trackers[0].update(xx)
+for i in range(0, len(obstacles)-1):
+    c = obstacles[i].center_mass
+    xx = c.T
+    trackers[i].predict()
+    trackers[i].update(xx)
 
 anim = AnimationXarm(robot, obstacles)
 t = LocalTime()
@@ -167,7 +190,8 @@ while check:
 
             if np.linalg.norm(goal - start) > eps:
                 with threading.Lock():
-                    res = planner.resolve_with_check(start)
+                    # res = planner.resolve_with_check(start)
+                    res = planner.resolve_with_rewire(start)
                     if res:
                         path = planner.get_solution_path()
                         path = path[::-1]

@@ -14,6 +14,7 @@ logging.basicConfig(format=format, level=logging.INFO,
 
 class RRT:
     def __init__(self, start, goal, args=None) -> None:
+        self.vis = 0
         self.eps = args["eps"]
         self.max_iter = args["max_iter"]
         self.start = start
@@ -99,7 +100,31 @@ class RRT:
 
         return np.array(obs)
 
-    def visualize(self) -> None:
+    @staticmethod
+    def add_arrow(line, position=None, direction='right', size=15, color=None):
+        if color is None:
+            color = line.get_color()
+
+        xdata = line.get_xdata()
+        ydata = line.get_ydata()
+
+        if position is None:
+            position = xdata.mean()
+        # find closest index
+        start_ind = np.argmin(np.absolute(xdata - position))
+        if direction == 'right':
+            end_ind = start_ind + 1
+        else:
+            end_ind = start_ind - 1
+
+        line.axes.annotate('',
+                           xytext=(xdata[1], ydata[1]),
+                           xy=(xdata[0], ydata[0]),
+                           arrowprops=dict(arrowstyle="->", color=color),
+                           size=size
+                           )
+
+    def visualize(self, mark_path=False, arrows=False) -> None:
         if len(self.start) != 2:
             raise Exception("Cannot visualize non 2D planning")
 
@@ -137,7 +162,10 @@ class RRT:
                 p1, p2 = n.position, n.parent.position
                 xs = [p1[0], p2[0]]
                 ys = [p1[1], p2[1]]
-                ax.plot(xs, ys, marker='o', color="green")
+                line = ax.plot(xs, ys, marker='o', color="green")[0]
+                if arrows:
+                    self.add_arrow(line)
+
         ax.scatter(self.start[0], self.start[1],
                    marker="o", color="blue", s=100, zorder=3)
         ax.scatter(self.goal[0], self.goal[1], marker="o",
@@ -151,10 +179,13 @@ class RRT:
             pxs.append(p[0])
             pys.append(p[1])
 
-        ax.plot(pxs, pys, marker='o', color="magenta", linewidth=3)
+        if mark_path:
+            ax.plot(pxs, pys, marker='o', color="magenta", linewidth=3)
         ax.grid(True)
         ax.set_xlim(self.state_space.range)
         ax.set_ylim(self.state_space.range)
         plt.ion()
         plt.show()
         plt.pause(0.001)
+        plt.savefig('/home/hadzem/Desktop/img/img' + str(self.vis) + '.png')
+        self.vis += 1
