@@ -1,4 +1,4 @@
-from .node import Node
+from rrt.node import Node
 import kdtree
 import random
 import numpy as np
@@ -11,7 +11,6 @@ import logging
 format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.INFO,
                     datefmt="%H:%M:%S")
-
 
 class RRT:
     def __init__(self, start, goal, args=None) -> None:
@@ -33,15 +32,9 @@ class RRT:
         self.robot = args["robot"]
         self.num_checks = args["num_checks"]
         if not(self.robot.is_valid(q=start) and self.robot.is_valid(q=goal)):
-            raise Exception("Robot is in collision in start or goal position!")
+            raise ValueError("Robot is in collision in start or goal position!")
         self.predictions = []
         self.path = []
-
-    def rebuild(self, restored_tree):
-        self.tree = kdtree.create([self.start])
-        for q in restored_tree:
-            self.nodes.append(q)
-            self.tree.add(q.position)
 
     def clear(self):
         self.tree = kdtree.create([self.start])
@@ -53,9 +46,6 @@ class RRT:
         return "Tree size: " + str(len(self.nodes))
 
     def get_parent_node(self, node) -> Node:
-        return self.nodes[self.nodes.index(node)]
-
-    def get_parent_node_kd (self, node) -> Node:
         return self.nodes_index[node]
 
     def solve(self) -> bool:
@@ -69,7 +59,6 @@ class RRT:
                 q_rand = self.state_space.get_qrand()
             q_near = self.tree.search_nn(q_rand)
 
-
             q_new = self.state_space.get_qnew(q_near[0].data, q_rand, self.eps)
             # print("qnear: ", q_near[0].data)
             # print("qnew: ", q_new)
@@ -78,12 +67,10 @@ class RRT:
                 # print("Time needed: ", timer() - s)
                 q_new_kdnode = self.tree.add(q_new)
                 # q_new_parent = self.get_parent_node(Node(q_near[0].data))
-                q_new_parent = self.get_parent_node_kd(q_near[0])
+                q_new_parent = self.get_parent_node(q_near[0])
                 q_new_node = Node(q_new, q_new_parent)
                 q_new_parent.children.append(q_new_node)
 
-                if hash(q_new_kdnode) in self.nodes_index:
-                    print("collision")
                 self.nodes_index[q_new_kdnode] = q_new_node
                 self.nodes.append(q_new_node)
                 # logging.info("adding node" + str(len(self.nodes)))
@@ -185,8 +172,8 @@ class RRT:
         plt.ion()
         plt.show()
         plt.pause(0.001)
-        plt.savefig('/home/hadzem/Desktop/img/' + name + str(self.viss) + '.png')
-        self.viss += 1
+        # plt.savefig('/home/hadzem/Desktop/img/' + name + str(self.viss) + '.png')
+        # self.viss += 1
 
     def visualize(self, mark_path=False, arrows=False, should_save=False) -> None:
         if len(self.start) != 2:
@@ -251,6 +238,6 @@ class RRT:
         plt.ion()
         plt.show()
         plt.pause(0.001)
-        if should_save:
-            plt.savefig('/home/hadzem/Desktop/img/img' + str(self.vis) + '.png')
-        self.vis += 1
+        # if should_save:
+        #     plt.savefig('/home/hadzem/Desktop/img/img' + str(self.vis) + '.png')
+        # self.vis += 1

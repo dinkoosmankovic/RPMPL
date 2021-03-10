@@ -6,6 +6,7 @@ from trimesh.collision import CollisionManager
 import numpy as np
 import threading
 
+
 class TwoDOF(RealVectorSpace):
     def __init__(self, obstacles) -> None:
         self.robot = URDF.load('data/two_planar/2dof_planar.urdf')

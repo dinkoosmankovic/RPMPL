@@ -1,60 +1,25 @@
-from rrt import RRT
+from rrt_v2.rrt import RRT
 import numpy as np
-import logging
 import kdtree
-import time
-from rrt.node import Node
+from rrt_v2.node import Node
 from timeit import default_timer as timer
 
 
-class RRTRewire(RRT):
+class EKFRRT(RRT):
     def __init__(self, start, goal, args):
         super().__init__(start, goal, args)
 
-    def solve_simple(self):
-        for i in range(1, len(self.path)):
-            if not self.robot.is_valid(self.path[i-1], self.path[i]):
-                start_t = timer()
-                self.clear()
-                res = self.solve()
-                diff = timer() - start_t
-                return res, diff
-        return False, 0
+    def replan(self, start):
+        if not(self.robot.is_valid(q=start) and self.robot.is_valid(q=self.goal)):
+            raise ValueError("Robot is in collision in start or goal position!")
 
-    def resolve_with_check(self, start):
         for i in range(1, len(self.path)):
             if not self.robot.is_valid(self.path[i-1], self.path[i]):
                 s = timer()
                 res = self.resolve(start)
                 diff = timer() - s
                 return res, diff
-
-        for q in self.path:
-            if not self.robot.is_valid(q):
-                s = timer()
-                res = self.resolve(start)
-                diff = timer() - s
-                return res, diff
-
-        # logging.info("using last tree")
         return False, 0
-
-    def reverse_parent(self, q_start, q_old_parent):
-        q = q_start
-        q_old_parent.children.append(q_start)
-        q_start.children.remove(q_old_parent)
-
-        while q is not None:
-            if q.parent is None:
-                q.parent = q_old_parent
-                break
-            q.children.append(q.parent)
-            q.parent.children.remove(q)
-
-            q_temp = q.parent
-            q.parent = q_old_parent
-            q_old_parent = q
-            q = q_temp
 
     def dfs(self, q_start):
         q_start.visited = True
@@ -62,87 +27,21 @@ class RRTRewire(RRT):
             if self.robot.is_valid(q_start.position, q.position):
                 self.dfs(q)
 
-    def resolve(self, start) -> bool:
-        # add new start node
-        self.start = start
-        # add new start node to tree and update it so it points from start
-        q_near = self.tree.search_nn(self.start)
-        if np.linalg.norm(start - q_near[0].data) > 1e-05:
-            q_near_node = self.get_parent_node(Node(q_near[0].data))
-            q_start = Node(self.start)
-            q_goal = self.nodes[-1]
-            self.nodes.pop()
-            self.nodes.append(q_start)
-            self.nodes.append(q_goal)
-
-            q_start.children.append(q_near_node)
-        else:
-            q_near_node = self.get_parent_node(Node(q_near[0].data))
-            if q_near_node.parent is not None:
-                q_near_node.parent.children.remove(q_near_node)
-                q_near_node.children.append(q_near_node.parent)
-                q_near_node.parent = None
-            q_start = q_near_node
-
-        self.reverse_parent_v2(q_start)
-
-        # remove nodes that are no longer in free space
-        del self.tree
-        self.tree = kdtree.create(dimensions=len(start))
-        for q in self.nodes[:]:
-            if not self.robot.is_valid(q.position):
-                q_parent = q.parent
-                if q_parent is not None:
-                    q_parent.children.remove(q)
-                for child in q.children:
-                    child.parent = None
-                self.nodes.remove(q)
-            else:
-                self.tree.add(q.position)
-
-        # self.start = start
-        # q_near = self.tree.search_nn(self.start)
-        # if np.linalg.norm(start-q_near[0].data) > 1e-05:
-        #     q_near_node = self.get_parent_node(Node(q_near[0].data))
-        #     q_old_parent = q_near_node.parent
-        #
-        #     q_new = Node(self.start)
-        #     self.nodes.append(q_new)
-        #
-        #     q_near_node.parent = q_new
-        #     q_new.children.append(q_near_node)
-        #     q_start = q_new
-        # else:
-        #     q_near_node = self.get_parent_node(Node(q_near[0].data))
-        #     q_old_parent = q_near_node.parent
-        #     q_near_node.parent = None
-        #     q_start = q_near_node
-        #     self.start = q_start.position
-        #
-        # # rotate rest of the tree to point from new start node
-        # if q_old_parent is not None:
-        #     self.reverse_parent(q_start=q_old_parent, q_old_parent=q_near_node)
-
-        # remove nodes that are not connected to start node
-        self.dfs(q_start)
-        i = 0
-        del self.tree
-        self.tree = kdtree.create([self.start])
-        for q in self.nodes[:]:
-            if not q.visited:
-                self.nodes.remove(q)
-            else:
-                self.tree.add(q.position)
-                q.visited = False
-
-        return self.solve()
-
     def update_path(self):
         if len(self.path) < 2 or self.robot.curr_q is None:
             return
 
         if np.linalg.norm(self.robot.curr_q-self.path[1]) < 1e-05:
             self.path = self.path[1:]
+
+    def closest(self, q, tree):
+        dist = float('inf')
+        q_ret = None
+        for qq in tree:
+            if np.linalg.norm(q.position - qq.position) < dist:
+                q_ret = qq
+                dist = np.linalg.norm(q.position-qq.position)
+        return q_ret
 
     def get_root_node(self, q):
         if q.parent is None:
@@ -158,15 +57,6 @@ class RRTRewire(RRT):
                 self.dfs_quick(qq, tree)
         tree.append(q)
 
-    def closest(self, q, tree):
-        dist = float('inf')
-        q_ret = None
-        for qq in tree:
-            if np.linalg.norm(q.position - qq.position) < dist:
-                q_ret = qq
-                dist = np.linalg.norm(q.position-qq.position)
-        return q_ret
-
     def connect(self, q_from, q_to):
         from_tree = []
         self.dfs_quick(self.get_root_node(q_from), from_tree)
@@ -179,7 +69,7 @@ class RRTRewire(RRT):
 
         if q_1 and self.robot.is_valid(q_from.position, q_1.position, self.num_checks*2):
             q_from.children.append(q_1)
-            self.reverse_parent_v2(q_from)
+            self.reverse_parent(q_from)
             return True
 
         if q_2 and self.robot.is_valid(q_2.position, q_to.position, self.num_checks*2):
@@ -191,24 +81,7 @@ class RRTRewire(RRT):
 
         return False
 
-    def fix_hanging_node(self, q_start):
-        if len(q_start.children) == 0:
-            return
-        for q in q_start.children:
-            if q.parent is None:
-                q.parent = q_start
-            self.fix_hanging_node(q)
-
-    def resolve_rewire(self, start):
-        for i in range(1, len(self.path)):
-            if not self.robot.is_valid(self.path[i-1], self.path[i]):
-                start_t = timer()
-                res = self.resolve_with_rewire(start)
-                diff = timer() - start_t
-                return res, diff
-        return False, 0
-
-    def reverse_parent_v2(self, q_start):
+    def reverse_parent(self, q_start):
         for q in q_start.children:
             if q.parent is None:
                 q.parent = q_start
@@ -218,9 +91,9 @@ class RRTRewire(RRT):
             q.parent.children.remove(q)
             q.children.append(q.parent)
             q.parent = q_start
-            self.reverse_parent_v2(q)
+            self.reverse_parent(q)
 
-    def resolve_with_rewire(self, start):
+    def resolve(self, start) -> bool:
         self.start = start
         # add new start node to tree and update it so it points from start
         q_near = self.tree.search_nn(self.start)
@@ -240,14 +113,15 @@ class RRTRewire(RRT):
 
             q_start.children.append(q_near_node)
         else:
-            q_near_node = self.get_parent_node(Node(q_near[0].data))
+            q_near_node = self.get_parent_node(q_near[0])
+            # q_near_node = self.get_parent_node(Node(q_near[0].data))
             if q_near_node.parent is not None:
                 q_near_node.parent.children.remove(q_near_node)
                 q_near_node.children.append(q_near_node.parent)
                 q_near_node.parent = None
             q_start = q_near_node
 
-        self.reverse_parent_v2(q_start)
+        self.reverse_parent(q_start)
 
         # find nodes on path that are not available and try to connect without using them
         q_goal_node = self.nodes[-1]
@@ -318,3 +192,4 @@ class RRTRewire(RRT):
         if res:
             return True
         return self.solve()
+
