@@ -54,6 +54,7 @@ def move_ob_hard(ob, anim, theta):
         ev = Event(Event.ENV_CHANGE)
         anim.events.append(ev)
 
+
 def move_ob_easy_xarm(ob, anim):
     with threading.Lock():
         if move_ob_easy_xarm.x < 0.3:
@@ -116,7 +117,7 @@ def move_thread(ob, anim, finish_ev, pause_ev, choice, theta=None, x=0, z=0):
                 move_ob_easy_xarm(ob, anim)
             elif choice == 3:  # hard xarm
                 move_ob_hard_xarm(ob, anim)
-        time.sleep(0.05)
+        time.sleep(0.1)
 
 
 def fix_path(path, max_q=1.0):
@@ -162,9 +163,9 @@ def run(run_number=0, animate=False, choice=0, ms=50):
         robot = Xarm6(obstacles)
 
     robot.start_config = start
-    eps = pi/10.0
+    eps = 0.2
     args = {
-        "max_iter": 3000,
+        "max_iter": 10000,
         "eps": eps,
         "gamma": 0.15,
         "state_space": robot.spaces,
@@ -210,10 +211,11 @@ def run(run_number=0, animate=False, choice=0, ms=50):
             path = path[::-1]
             path.append(goal)
 
-            path = fix_path(path, max_q=0.03)
+            path = fix_path(path, max_q=0.05)
             anim.robot.set_trajectory(path)
         else:
             logging.info("Could not find RRT solution in time.")
+            finish_ev.set()
             return None, None, None, -2
 
         total_nodes += len(planner.nodes)
@@ -226,8 +228,9 @@ def run(run_number=0, animate=False, choice=0, ms=50):
     replan_counter = 0
     total_time = 0
 
+    min_dist = float('inf')
     while check:
-        if timer() - t_start > 30:
+        if timer() - t_start > 120:
             logging.info("Stuck.")
             finish_ev.set()
             return replan_counter, total_time, initial_planning, -1
@@ -249,7 +252,7 @@ def run(run_number=0, animate=False, choice=0, ms=50):
                         path = planner.get_solution_path()
                         path = path[::-1]
                         path.append(goal)
-                        path = fix_path(path, max_q=0.03)
+                        path = fix_path(path, max_q=0.05)
                         anim.robot.set_trajectory(path)
                 else:
                     check = False
@@ -265,8 +268,12 @@ def run(run_number=0, animate=False, choice=0, ms=50):
         scene_thread.join()
         robot_thread.join()
         planner.update_path()
+        min_dist = min(anim.robot.distance(anim.robot.curr_q), min_dist)
         t.tick(ms)
 
+    total_time = timer() - t_start
+
     logging.info("Done: " + str(run_number))
+    print(min_dist)
     finish_ev.set()
-    return replan_counter, total_time, initial_planning, Node.count
+    return min_dist, replan_counter, total_time, initial_planning, Node.count

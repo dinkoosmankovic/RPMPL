@@ -115,7 +115,7 @@ class RRT:
         return np.array(obs)
 
     @staticmethod
-    def add_arrow(line, position=None, direction='right', size=15, color=None):
+    def add_arrow(line, position=None, direction='right', size=50, color=None):
         if color is None:
             color = line.get_color()
 
@@ -232,12 +232,12 @@ class RRT:
 
         if mark_path:
             ax.plot(pxs, pys, marker='o', color="magenta", linewidth=3)
-        ax.grid(True)
+        ax.grid(False)
         ax.set_xlim(self.state_space.range)
         ax.set_ylim(self.state_space.range)
         plt.ion()
         plt.show()
         plt.pause(0.001)
-        # if should_save:
-        #     plt.savefig('/home/hadzem/Desktop/img/img' + str(self.vis) + '.png')
-        # self.vis += 1
+        if should_save:
+            plt.savefig('/home/hadzem/Desktop/img/img' + str(self.vis) + '.png')
+        self.vis += 1

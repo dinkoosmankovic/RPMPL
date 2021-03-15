@@ -10,7 +10,6 @@ class DRRT(RRT):
         super().__init__(start, goal, args)
 
     def replan(self, start):
-        print(start, self.goal)
         if not(self.robot.is_valid(q=start) and self.robot.is_valid(q=self.goal)):
             raise ValueError("Robot is in collision in start or goal position!")
 
